@@ -1,7 +1,12 @@
 import cache from '../../../lib/cache.js';
 
 const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
-const CACHE_TTL = 12; // 12 seconds to respect 5 calls/min limit
+// Increased cache TTL to 60 seconds to reduce API calls (free tier: 25 requests/day)
+// This means max 1440 requests/day if called every second, but with 60s cache = max 1440/day
+// With 15s client polling, that's 4 calls/min = 5760 calls/day theoretical max
+// But cache reduces actual API calls to ~1440/day, still over limit
+// Better: cache for 5 minutes (300s) = ~288 API calls/day max
+const CACHE_TTL = 300; // 5 minutes - reduces API calls significantly for free tier
 const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
 
 export async function GET() {
