@@ -1,0 +1,21 @@
+{
+  "name": "stock-ticker",
+  "version": "1.0.0",
+  "description": "Stock ticker for Webflow using Alpha Vantage API",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^15.0.0"
+  }
+}
