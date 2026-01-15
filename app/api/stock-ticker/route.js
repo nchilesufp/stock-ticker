@@ -61,6 +61,10 @@ export async function GET() {
     // Check for rate limit message
     if (data['Note']) {
       console.warn('Alpha Vantage Rate Limit:', data['Note']);
+      
+      // Sanitize the rate limit message to remove API key
+      const sanitizedNote = data['Note'].replace(/API key as [A-Z0-9]+/gi, 'API key');
+      
       // If we hit rate limit, try to return cached data even if expired
       const staleCache = cache.get(CACHE_KEY);
       if (staleCache) {
@@ -71,7 +75,7 @@ export async function GET() {
         {
           status: 'error',
           message: 'Service not available',
-          rateLimit: data['Note'],
+          rateLimit: sanitizedNote,
           debug: {
             stockSymbol: STOCK_SYMBOL,
             apiKeyConfigured: !!apiKey
