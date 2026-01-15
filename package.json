@@ -15,6 +15,7 @@
     "react-dom": "^18.3.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^3.4.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.0.0"
   }

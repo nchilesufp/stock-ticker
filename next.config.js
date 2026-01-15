@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: '/app',
+  basePath: "/app",
   assetPrefix: '/app',
-  output: 'standalone',
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
