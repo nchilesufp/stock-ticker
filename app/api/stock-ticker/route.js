@@ -38,10 +38,16 @@ export async function GET() {
 
     // Check for Alpha Vantage API errors
     if (data['Error Message']) {
+      console.error('Alpha Vantage API Error:', data['Error Message']);
       return Response.json(
         {
           status: 'error',
-          message: 'Service not available'
+          message: 'Service not available',
+          alphaVantageError: data['Error Message'],
+          debug: {
+            stockSymbol: STOCK_SYMBOL,
+            apiKeyConfigured: !!apiKey
+          }
         },
         { status: 503 }
       );
@@ -49,6 +55,7 @@ export async function GET() {
 
     // Check for rate limit message
     if (data['Note']) {
+      console.warn('Alpha Vantage Rate Limit:', data['Note']);
       // If we hit rate limit, try to return cached data even if expired
       const staleCache = cache.get(CACHE_KEY);
       if (staleCache) {
@@ -58,7 +65,12 @@ export async function GET() {
       return Response.json(
         {
           status: 'error',
-          message: 'Service not available'
+          message: 'Service not available',
+          rateLimit: data['Note'],
+          debug: {
+            stockSymbol: STOCK_SYMBOL,
+            apiKeyConfigured: !!apiKey
+          }
         },
         { status: 503 }
       );
@@ -66,10 +78,16 @@ export async function GET() {
 
     // Parse response
     if (!data['Global Quote'] || Object.keys(data['Global Quote']).length === 0) {
+      console.error('No Global Quote data received:', JSON.stringify(data));
       return Response.json(
         {
           status: 'error',
-          message: 'Service not available'
+          message: 'Service not available',
+          debug: {
+            stockSymbol: STOCK_SYMBOL,
+            apiKeyConfigured: !!apiKey,
+            responseData: data
+          }
         },
         { status: 503 }
       );
@@ -86,10 +104,16 @@ export async function GET() {
 
     // Validate data
     if (!symbol || isNaN(price)) {
+      console.error('Invalid data received:', { symbol, price, quote });
       return Response.json(
         {
           status: 'error',
-          message: 'Service not available'
+          message: 'Service not available',
+          debug: {
+            stockSymbol: STOCK_SYMBOL,
+            receivedSymbol: symbol,
+            receivedPrice: price
+          }
         },
         { status: 503 }
       );
@@ -114,6 +138,12 @@ export async function GET() {
 
   } catch (error) {
     console.error('Stock ticker API error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      stockSymbol: STOCK_SYMBOL,
+      apiKeyConfigured: !!process.env.ALPHA_VANTAGE_API_KEY
+    });
     
     // Try to return stale cache on error
     const staleCache = cache.get(CACHE_KEY);
@@ -124,7 +154,12 @@ export async function GET() {
     return Response.json(
       {
         status: 'error',
-        message: 'Service not available'
+        message: 'Service not available',
+        error: error.message,
+        debug: {
+          stockSymbol: STOCK_SYMBOL,
+          apiKeyConfigured: !!process.env.ALPHA_VANTAGE_API_KEY
+        }
       },
       { status: 503 }
     );
