@@ -1,6 +1,6 @@
 # Stock Ticker for Webflow - Alpha Vantage API
 
-A production-ready stock ticker component for Webflow Cloud using Alpha Vantage API. Displays real-time stock data for NASDAQ:UFPI with secure API key handling.
+A production-ready stock ticker component for Webflow Cloud using Alpha Vantage API. Displays real-time stock data with secure API key handling.
 
 ## Features
 
@@ -36,11 +36,19 @@ npm install
 
 1. Open your Webflow Cloud project dashboard
 2. Navigate to **Environment Variables** (or **Settings** → **Environment Variables**)
-3. Add a new environment variable:
+3. Add environment variables:
+   
+   **Required:**
    - **Name**: `ALPHA_VANTAGE_API_KEY`
    - **Value**: Your Alpha Vantage API key
    - **Mark as Secret**: ✅ Yes (this encrypts the value)
-4. Save the environment variable
+   
+   **Optional (if not set, defaults to AAPL):**
+   - **Name**: `STOCK_SYMBOL`
+   - **Value**: Your desired stock symbol (e.g., `AAPL`, `GOOGL`, `MSFT`)
+   - **Mark as Secret**: Optional
+   
+4. Save the environment variables
 
 ### 4. Deploy to Webflow Cloud
 
@@ -58,7 +66,7 @@ In your Webflow Designer, create the following elements with these exact IDs:
 
 2. **Symbol** (Text/Heading)
    - ID: `stock-symbol`
-   - Will display: "UFPI"
+   - Will display the stock symbol (e.g., "AAPL", "GOOGL")
 
 3. **Price** (Text/Heading)
    - ID: `stock-price`
@@ -136,13 +144,13 @@ Example CSS:
 
 ### GET `/api/stock-ticker`
 
-Returns stock data for UFPI.
+Returns stock data for the configured stock symbol.
 
 **Response (Success):**
 ```json
 {
   "status": "success",
-  "symbol": "UFPI",
+  "symbol": "AAPL",
   "price": "123.45",
   "change": "1.23",
   "changePercent": "1.01%",
@@ -178,9 +186,14 @@ Returns stock data for UFPI.
 
 ### Change Stock Symbol
 
-Edit `app/api/stock-ticker/route.js`:
+Set the `STOCK_SYMBOL` environment variable in Webflow Cloud:
+- **Name**: `STOCK_SYMBOL`
+- **Value**: Your desired stock symbol (e.g., `AAPL`, `GOOGL`, `MSFT`)
+- **Mark as Secret**: Optional (not sensitive data)
+
+Alternatively, edit `app/api/stock-ticker/route.js` to change the default fallback:
 ```javascript
-const STOCK_SYMBOL = 'UFPI'; // Change to your desired symbol
+const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Change default if needed
 ```
 
 ### Change Update Frequency

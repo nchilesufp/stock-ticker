@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Stock Ticker',
-  description: 'Stock ticker for UFPI',
+  description: 'Stock ticker component',
 }
 
 export default function RootLayout({ children }) {

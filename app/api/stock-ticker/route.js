@@ -1,8 +1,8 @@
 import cache from '../../../lib/cache.js';
 
-const STOCK_SYMBOL = 'UFPI';
+const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
 const CACHE_TTL = 12; // 12 seconds to respect 5 calls/min limit
-const CACHE_KEY = 'ufpi';
+const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
 
 export async function GET() {
   try {

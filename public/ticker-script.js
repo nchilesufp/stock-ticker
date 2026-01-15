@@ -19,7 +19,6 @@
   // Configuration
   const API_URL = '/api/stock-ticker'; // Adjust if your app is mounted at a different path
   const POLL_INTERVAL = 15000; // 15 seconds (slightly above 12s cache)
-  const STOCK_SYMBOL = 'UFPI';
 
   // Get DOM elements
   const container = document.getElementById('stock-ticker-container');
@@ -75,7 +74,7 @@
     }
 
     // Update elements
-    symbolEl.textContent = data.symbol || STOCK_SYMBOL;
+    symbolEl.textContent = data.symbol;
     priceEl.textContent = `$${data.price}`;
     
     // Format change with +/- and color
