@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Webflow Cloud compatibility
+  basePath: '/app',
+  assetPrefix: '/app',
   output: 'standalone',
 }
 

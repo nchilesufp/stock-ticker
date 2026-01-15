@@ -17,7 +17,7 @@
   'use strict';
 
   // Configuration
-  const API_URL = '/api/stock-ticker'; // Adjust if your app is mounted at a different path
+  const API_URL = '/app/api/stock-ticker'; // Mount path is /app
   const POLL_INTERVAL = 15000; // 15 seconds (slightly above 12s cache)
 
   // Get DOM elements
