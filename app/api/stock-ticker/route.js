@@ -58,6 +58,29 @@ export async function GET() {
       );
     }
 
+    // Check for Alpha Vantage information/notice messages (often rate limit related)
+    if (data['Information']) {
+      console.warn('Alpha Vantage Information:', data['Information']);
+      // Try to return cached data even if expired
+      const staleCache = cache.get(CACHE_KEY);
+      if (staleCache) {
+        return Response.json(staleCache);
+      }
+      
+      return Response.json(
+        {
+          status: 'error',
+          message: 'Service not available',
+          information: data['Information'],
+          debug: {
+            stockSymbol: STOCK_SYMBOL,
+            apiKeyConfigured: !!apiKey
+          }
+        },
+        { status: 503 }
+      );
+    }
+
     // Check for rate limit message
     if (data['Note']) {
       console.warn('Alpha Vantage Rate Limit:', data['Note']);
