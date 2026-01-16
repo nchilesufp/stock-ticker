@@ -62,19 +62,21 @@ export async function GET() {
     if (data['Information']) {
       console.warn('Alpha Vantage Information:', data['Information']);
       // Try to return cached data even if expired
-      const staleCache = cache.get(CACHE_KEY);
+      const staleCache = cache.getStale(CACHE_KEY);
       if (staleCache) {
+        console.log('Returning stale cache due to rate limit');
         return Response.json(staleCache);
       }
       
       return Response.json(
         {
           status: 'error',
-          message: 'Service not available',
-          information: data['Information'],
+          message: 'Service temporarily unavailable - API rate limit reached',
+          information: 'Daily API limit reached. Please try again later or upgrade to premium for higher limits.',
           debug: {
             stockSymbol: STOCK_SYMBOL,
-            apiKeyConfigured: !!apiKey
+            apiKeyConfigured: !!apiKey,
+            hasCache: false
           }
         },
         { status: 503 }
@@ -89,8 +91,9 @@ export async function GET() {
       const sanitizedNote = data['Note'].replace(/API key as [A-Z0-9]+/gi, 'API key');
       
       // If we hit rate limit, try to return cached data even if expired
-      const staleCache = cache.get(CACHE_KEY);
+      const staleCache = cache.getStale(CACHE_KEY);
       if (staleCache) {
+        console.log('Returning stale cache due to rate limit (Note)');
         return Response.json(staleCache);
       }
       
@@ -178,8 +181,9 @@ export async function GET() {
     });
     
     // Try to return stale cache on error
-    const staleCache = cache.get(CACHE_KEY);
+    const staleCache = cache.getStale(CACHE_KEY);
     if (staleCache) {
+      console.log('Returning stale cache due to error');
       return Response.json(staleCache);
     }
 
