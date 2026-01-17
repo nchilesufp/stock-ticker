@@ -46,8 +46,14 @@ class Cache {
   }
 }
 
-// Singleton instance
-const cache = new Cache();
+// Lazy singleton - initialize inside function to avoid bundling issues
+let cacheInstance = null;
+function getCache() {
+  if (!cacheInstance) {
+    cacheInstance = new Cache();
+  }
+  return cacheInstance;
+}
 
 const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
 // Increased cache TTL to 60 seconds to reduce API calls (free tier: 25 requests/day)
@@ -59,6 +65,8 @@ const CACHE_TTL = 300; // 5 minutes - reduces API calls significantly for free t
 const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
 
 export async function GET() {
+  // Initialize cache inside function to avoid module-level initialization issues
+  const cache = getCache();
   const requestStartTime = Date.now();
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] GET /api/stock-ticker - Request started`);
