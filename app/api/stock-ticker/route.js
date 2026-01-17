@@ -17,6 +17,29 @@ export async function GET() {
       return Response.json(cached);
     }
 
+    // Check if we're rate limited - if so, try to return stale cache and avoid API call
+    if (cache.isRateLimited()) {
+      console.log('Rate limit active, attempting to return stale cache');
+      const staleCache = cache.getStale(CACHE_KEY);
+      if (staleCache) {
+        console.log('Returning stale cache due to active rate limit');
+        return Response.json(staleCache);
+      }
+      
+      return Response.json(
+        {
+          status: 'error',
+          message: 'Service temporarily unavailable - API rate limit reached',
+          debug: {
+            stockSymbol: STOCK_SYMBOL,
+            apiKeyConfigured: true,
+            rateLimitActive: true
+          }
+        },
+        { status: 503 }
+      );
+    }
+
     // Get API key from environment
     const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
     
@@ -33,6 +56,7 @@ export async function GET() {
     // Fetch from Alpha Vantage
     const apiUrl = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${STOCK_SYMBOL}&apikey=${apiKey}`;
     
+    console.log('Making Alpha Vantage API call');
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
@@ -60,7 +84,10 @@ export async function GET() {
 
     // Check for Alpha Vantage information/notice messages (often rate limit related)
     if (data['Information']) {
-      console.warn('Alpha Vantage Information:', data['Information']);
+      console.warn('Alpha Vantage Information (rate limit detected):', data['Information']);
+      // Mark as rate limited to prevent future API calls until midnight UTC
+      cache.setRateLimited();
+      
       // Try to return cached data even if expired
       const staleCache = cache.getStale(CACHE_KEY);
       if (staleCache) {
@@ -76,7 +103,8 @@ export async function GET() {
           debug: {
             stockSymbol: STOCK_SYMBOL,
             apiKeyConfigured: !!apiKey,
-            hasCache: false
+            hasCache: false,
+            rateLimitSet: true
           }
         },
         { status: 503 }
@@ -85,7 +113,10 @@ export async function GET() {
 
     // Check for rate limit message
     if (data['Note']) {
-      console.warn('Alpha Vantage Rate Limit:', data['Note']);
+      console.warn('Alpha Vantage Rate Limit (Note field):', data['Note']);
+      
+      // Mark as rate limited to prevent future API calls until midnight UTC
+      cache.setRateLimited();
       
       // Sanitize the rate limit message to remove API key
       const sanitizedNote = data['Note'].replace(/API key as [A-Z0-9]+/gi, 'API key');
@@ -104,7 +135,8 @@ export async function GET() {
           rateLimit: sanitizedNote,
           debug: {
             stockSymbol: STOCK_SYMBOL,
-            apiKeyConfigured: !!apiKey
+            apiKeyConfigured: !!apiKey,
+            rateLimitSet: true
           }
         },
         { status: 503 }
