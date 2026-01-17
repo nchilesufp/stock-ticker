@@ -1,62 +1,15 @@
+import cache from '../../../lib/cache.js';
+
+const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
+// Increased cache TTL to 60 seconds to reduce API calls (free tier: 25 requests/day)
+// This means max 1440 requests/day if called every second, but with 60s cache = max 1440/day
+// With 15s client polling, that's 4 calls/min = 5760 calls/day theoretical max
+// But cache reduces actual API calls to ~1440/day, still over limit
+// Better: cache for 5 minutes (300s) = ~288 API calls/day max
+const CACHE_TTL = 300; // 5 minutes - reduces API calls significantly for free tier
+const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
+
 export async function GET() {
-  // Define Cache class inside function to avoid module bundling issues
-  class Cache {
-    constructor() {
-      this.cache = new Map();
-      this.rateLimitUntil = null;
-    }
-
-    set(key, value, ttlSeconds) {
-      const expiresAt = Date.now() + (ttlSeconds * 1000);
-      this.cache.set(key, { value, expiresAt });
-    }
-
-    get(key) {
-      const item = this.cache.get(key);
-      if (!item) return null;
-      if (Date.now() > item.expiresAt) {
-        this.cache.delete(key);
-        return null;
-      }
-      return item.value;
-    }
-
-    getStale(key) {
-      const item = this.cache.get(key);
-      return item ? item.value : null;
-    }
-
-    setRateLimited() {
-      const now = new Date();
-      const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
-      this.rateLimitUntil = tomorrow.getTime();
-      console.log('Rate limit set until:', new Date(this.rateLimitUntil).toISOString());
-    }
-
-    isRateLimited() {
-      if (!this.rateLimitUntil) return false;
-      if (Date.now() > this.rateLimitUntil) {
-        this.rateLimitUntil = null;
-        return false;
-      }
-      return true;
-    }
-
-    getRateLimitUntil() {
-      return this.rateLimitUntil;
-    }
-  }
-
-  // Initialize everything inside function to avoid module-level initialization issues
-  const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
-  const CACHE_TTL = 300; // 5 minutes - reduces API calls significantly for free tier
-  const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
-  
-  // Lazy singleton - initialize inside function to avoid bundling issues
-  if (!globalThis.__stockTickerCache) {
-    globalThis.__stockTickerCache = new Cache();
-  }
-  const cache = globalThis.__stockTickerCache;
   const requestStartTime = Date.now();
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] GET /api/stock-ticker - Request started`);
