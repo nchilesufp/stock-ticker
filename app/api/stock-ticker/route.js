@@ -1,52 +1,52 @@
-// Inline cache to avoid module bundling issues in Cloudflare Workers
-class Cache {
-  constructor() {
-    this.cache = new Map();
-    this.rateLimitUntil = null;
-  }
-
-  set(key, value, ttlSeconds) {
-    const expiresAt = Date.now() + (ttlSeconds * 1000);
-    this.cache.set(key, { value, expiresAt });
-  }
-
-  get(key) {
-    const item = this.cache.get(key);
-    if (!item) return null;
-    if (Date.now() > item.expiresAt) {
-      this.cache.delete(key);
-      return null;
-    }
-    return item.value;
-  }
-
-  getStale(key) {
-    const item = this.cache.get(key);
-    return item ? item.value : null;
-  }
-
-  setRateLimited() {
-    const now = new Date();
-    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
-    this.rateLimitUntil = tomorrow.getTime();
-    console.log('Rate limit set until:', new Date(this.rateLimitUntil).toISOString());
-  }
-
-  isRateLimited() {
-    if (!this.rateLimitUntil) return false;
-    if (Date.now() > this.rateLimitUntil) {
-      this.rateLimitUntil = null;
-      return false;
-    }
-    return true;
-  }
-
-  getRateLimitUntil() {
-    return this.rateLimitUntil;
-  }
-}
-
 export async function GET() {
+  // Define Cache class inside function to avoid module bundling issues
+  class Cache {
+    constructor() {
+      this.cache = new Map();
+      this.rateLimitUntil = null;
+    }
+
+    set(key, value, ttlSeconds) {
+      const expiresAt = Date.now() + (ttlSeconds * 1000);
+      this.cache.set(key, { value, expiresAt });
+    }
+
+    get(key) {
+      const item = this.cache.get(key);
+      if (!item) return null;
+      if (Date.now() > item.expiresAt) {
+        this.cache.delete(key);
+        return null;
+      }
+      return item.value;
+    }
+
+    getStale(key) {
+      const item = this.cache.get(key);
+      return item ? item.value : null;
+    }
+
+    setRateLimited() {
+      const now = new Date();
+      const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+      this.rateLimitUntil = tomorrow.getTime();
+      console.log('Rate limit set until:', new Date(this.rateLimitUntil).toISOString());
+    }
+
+    isRateLimited() {
+      if (!this.rateLimitUntil) return false;
+      if (Date.now() > this.rateLimitUntil) {
+        this.rateLimitUntil = null;
+        return false;
+      }
+      return true;
+    }
+
+    getRateLimitUntil() {
+      return this.rateLimitUntil;
+    }
+  }
+
   // Initialize everything inside function to avoid module-level initialization issues
   const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
   const CACHE_TTL = 300; // 5 minutes - reduces API calls significantly for free tier
