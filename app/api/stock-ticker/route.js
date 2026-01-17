@@ -10,21 +10,31 @@ const CACHE_TTL = 300; // 5 minutes - reduces API calls significantly for free t
 const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
 
 export async function GET() {
+  const requestStartTime = Date.now();
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] GET /api/stock-ticker - Request started`);
+  
   try {
     // Check cache first
     const cached = cache.get(CACHE_KEY);
     if (cached) {
+      const cacheAge = Math.floor((Date.now() - new Date(cached.timestamp || cached.lastRefreshed).getTime()) / 1000);
+      console.log(`[${timestamp}] ✅ Cache HIT - returning cached data (age: ${cacheAge}s)`);
       return Response.json(cached);
     }
+    console.log(`[${timestamp}] ❌ Cache MISS - no cached data available`);
 
     // Check if we're rate limited - if so, try to return stale cache and avoid API call
-    if (cache.isRateLimited()) {
-      console.log('Rate limit active, attempting to return stale cache');
+    const isRateLimited = cache.isRateLimited();
+    const rateLimitUntil = cache.getRateLimitUntil();
+    if (isRateLimited) {
+      console.log(`[${timestamp}] ⚠️ Rate limit ACTIVE (until: ${rateLimitUntil ? new Date(rateLimitUntil).toISOString() : 'N/A'}) - checking for stale cache`);
       const staleCache = cache.getStale(CACHE_KEY);
       if (staleCache) {
-        console.log('Returning stale cache due to active rate limit');
+        console.log(`[${timestamp}] ✅ Returning STALE cache due to active rate limit - NO API CALL MADE`);
         return Response.json(staleCache);
       }
+      console.log(`[${timestamp}] ❌ Rate limited and no stale cache available - returning error WITHOUT API CALL`);
       
       return Response.json(
         {
@@ -33,12 +43,14 @@ export async function GET() {
           debug: {
             stockSymbol: STOCK_SYMBOL,
             apiKeyConfigured: true,
-            rateLimitActive: true
+            rateLimitActive: true,
+            rateLimitUntil: rateLimitUntil ? new Date(rateLimitUntil).toISOString() : null
           }
         },
         { status: 503 }
       );
     }
+    console.log(`[${timestamp}] ✅ Rate limit NOT active - proceeding with API call`);
 
     // Get API key from environment
     const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
@@ -56,8 +68,13 @@ export async function GET() {
     // Fetch from Alpha Vantage
     const apiUrl = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${STOCK_SYMBOL}&apikey=${apiKey}`;
     
-    console.log('Making Alpha Vantage API call');
+    console.log(`[${new Date().toISOString()}] 🔴 *** MAKING ALPHA VANTAGE API CALL ***`);
+    console.log(`[${new Date().toISOString()}] API URL: ${apiUrl.replace(/apikey=[^&]+/, 'apikey=***')}`);
+    const apiCallStartTime = Date.now();
     const response = await fetch(apiUrl);
+    const apiCallDuration = Date.now() - apiCallStartTime;
+    const responseTimestamp = new Date().toISOString();
+    console.log(`[${responseTimestamp}] Alpha Vantage API response received (status: ${response.status}, duration: ${apiCallDuration}ms)`);
     
     if (!response.ok) {
       throw new Error(`Alpha Vantage API error: ${response.status}`);
@@ -84,7 +101,9 @@ export async function GET() {
 
     // Check for Alpha Vantage information/notice messages (often rate limit related)
     if (data['Information']) {
-      console.warn('Alpha Vantage Information (rate limit detected):', data['Information']);
+      const infoTimestamp = new Date().toISOString();
+      console.warn(`[${infoTimestamp}] ⚠️⚠️⚠️ RATE LIMIT DETECTED - Alpha Vantage Information:`, data['Information']);
+      console.warn(`[${infoTimestamp}] Setting rate limit flag - will prevent API calls until UTC midnight`);
       // Mark as rate limited to prevent future API calls until midnight UTC
       cache.setRateLimited();
       
@@ -113,7 +132,9 @@ export async function GET() {
 
     // Check for rate limit message
     if (data['Note']) {
-      console.warn('Alpha Vantage Rate Limit (Note field):', data['Note']);
+      const noteTimestamp = new Date().toISOString();
+      console.warn(`[${noteTimestamp}] ⚠️⚠️⚠️ RATE LIMIT DETECTED - Alpha Vantage Note:`, data['Note']);
+      console.warn(`[${noteTimestamp}] Setting rate limit flag - will prevent API calls until UTC midnight`);
       
       // Mark as rate limited to prevent future API calls until midnight UTC
       cache.setRateLimited();
@@ -200,6 +221,9 @@ export async function GET() {
 
     // Cache the result
     cache.set(CACHE_KEY, result, CACHE_TTL);
+    const totalDuration = Date.now() - requestStartTime;
+    const successTimestamp = new Date().toISOString();
+    console.log(`[${successTimestamp}] ✅✅✅ SUCCESS - Stock data cached and returned (total duration: ${totalDuration}ms, cached for ${CACHE_TTL}s)`);
 
     return Response.json(result);
 
