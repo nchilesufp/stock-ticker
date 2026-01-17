@@ -46,21 +46,17 @@ class Cache {
   }
 }
 
-// Lazy singleton - initialize inside function to avoid bundling issues
-let cacheInstance = null;
-function getCache() {
-  if (!cacheInstance) {
-    cacheInstance = new Cache();
-  }
-  return cacheInstance;
-}
-
 export async function GET() {
   // Initialize everything inside function to avoid module-level initialization issues
   const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
   const CACHE_TTL = 300; // 5 minutes - reduces API calls significantly for free tier
   const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
-  const cache = getCache();
+  
+  // Lazy singleton - initialize inside function to avoid bundling issues
+  if (!globalThis.__stockTickerCache) {
+    globalThis.__stockTickerCache = new Cache();
+  }
+  const cache = globalThis.__stockTickerCache;
   const requestStartTime = Date.now();
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] GET /api/stock-ticker - Request started`);
