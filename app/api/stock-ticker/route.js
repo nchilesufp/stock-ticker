@@ -1,5 +1,5 @@
-// Edge runtime required for Webflow Cloud/Cloudflare Workers
-export const runtime = 'edge';
+// Note: OpenNext Cloudflare uses Node.js runtime (edge runtime not yet supported)
+// Cloudflare Cache API (caches) is still available in this runtime
 
 const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
 const CACHE_TTL = 3600; // 1 hour - limit to 1 call per hour to Alpha Vantage API
