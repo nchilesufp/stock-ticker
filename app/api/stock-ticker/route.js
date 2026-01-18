@@ -1,15 +1,21 @@
-import cache from '../../../lib/cache.js';
+// Edge runtime required for Webflow Cloud/Cloudflare Workers
+export const runtime = 'edge';
 
 const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
-const CACHE_TTL = 12; // 12 seconds to respect 5 calls/min limit
-const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
+const CACHE_TTL = 3600; // 1 hour - limit to 1 call per hour to Alpha Vantage API
+const CACHE_KEY = `stock-ticker:${STOCK_SYMBOL.toLowerCase()}`;
 
-export async function GET() {
+export async function GET(request) {
   try {
-    // Check cache first
-    const cached = cache.get(CACHE_KEY);
-    if (cached) {
-      return Response.json(cached);
+    // Check Cloudflare Cache API first (persists across worker instances)
+    const cacheUrl = new URL(request.url);
+    cacheUrl.pathname = `/cache/${CACHE_KEY}`;
+    const cacheRequest = new Request(cacheUrl.toString());
+    const cachedResponse = await caches.default.match(cacheRequest);
+    
+    if (cachedResponse) {
+      const cachedData = await cachedResponse.json();
+      return Response.json(cachedData);
     }
 
     // Get API key from environment
@@ -54,9 +60,10 @@ export async function GET() {
     if (data['Note']) {
       console.warn('Alpha Vantage Rate Limit:', data['Note']);
       // If we hit rate limit, try to return cached data even if expired
-      const staleCache = cache.get(CACHE_KEY);
-      if (staleCache) {
-        return Response.json(staleCache);
+      const staleResponse = await caches.default.match(cacheRequest);
+      if (staleResponse) {
+        const staleData = await staleResponse.json();
+        return Response.json(staleData);
       }
       
       return Response.json(
@@ -120,8 +127,18 @@ export async function GET() {
       lastRefreshed: new Date().toISOString()
     };
 
-    // Cache the result
-    cache.set(CACHE_KEY, result, CACHE_TTL);
+    // Cache the result using Cloudflare Cache API (persists across worker instances)
+    const cacheResponse = Response.json(result, {
+      headers: {
+        'Cache-Control': `public, max-age=${CACHE_TTL}, s-maxage=${CACHE_TTL}`
+      }
+    });
+    
+    // Store in cache for future requests
+    const cacheUrl = new URL(request.url);
+    cacheUrl.pathname = `/cache/${CACHE_KEY}`;
+    const cacheRequestToStore = new Request(cacheUrl.toString());
+    await caches.default.put(cacheRequestToStore, cacheResponse.clone());
 
     return Response.json(result);
 
@@ -130,9 +147,13 @@ export async function GET() {
     console.error('Error stack:', error.stack);
     
     // Try to return stale cache on error
-    const staleCache = cache.get(CACHE_KEY);
-    if (staleCache) {
-      return Response.json(staleCache);
+    const cacheUrl = new URL(request.url);
+    cacheUrl.pathname = `/cache/${CACHE_KEY}`;
+    const cacheRequest = new Request(cacheUrl.toString());
+    const staleResponse = await caches.default.match(cacheRequest);
+    if (staleResponse) {
+      const staleData = await staleResponse.json();
+      return Response.json(staleData);
     }
 
     return Response.json(

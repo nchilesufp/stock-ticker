@@ -1,13 +1,13 @@
 # Stock Ticker for Webflow - Alpha Vantage API
 
-A production-ready stock ticker component for Webflow Cloud using Alpha Vantage API. Displays real-time stock data with secure API key handling.
+A production-ready stock ticker component for Webflow Cloud using Alpha Vantage API. Displays stock data with secure API key handling and efficient caching to stay within free tier limits.
 
 ## Features
 
 - ✅ **Secure API Key Handling** - API key stored server-side in Webflow Cloud environment variables
 - ✅ **Alpha Vantage Integration** - Official, compliant data source
-- ✅ **Smart Caching** - 12-second cache to respect free tier rate limits (5 calls/min)
-- ✅ **Auto-refresh** - Updates every 15 seconds
+- ✅ **Smart Caching** - 1-hour cache to respect free tier rate limits (25 calls/day)
+- ✅ **Load on Page View** - Fetches stock data when page loads
 - ✅ **Error Handling** - Graceful degradation with "Service not available" message
 - ✅ **Relative Timestamps** - Shows "X minutes/hours/days ago"
 - ✅ **Compliance Ready** - Includes last refreshed timestamp
@@ -170,10 +170,10 @@ Returns stock data for the configured stock symbol.
 
 ## Rate Limiting
 
-- **Free Tier**: 5 API calls per minute, 500 per day
-- **Cache Duration**: 12 seconds (ensures we stay within limits)
-- **Client Polling**: Every 15 seconds
-- **Result**: Maximum 4-5 API calls per minute, well within free tier limits
+- **Free Tier**: 25 API calls per day
+- **Cache Duration**: 1 hour (3600 seconds)
+- **Client Fetching**: Single fetch on page load
+- **Result**: Maximum 24 calls per day to Alpha Vantage API, safely under the 25 calls/day free tier limit 
 
 ## Error Handling
 
@@ -196,23 +196,14 @@ Alternatively, edit `app/api/stock-ticker/route.js` to change the default fallba
 const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Change default if needed
 ```
 
-### Change Update Frequency
-
-Edit `public/ticker-script.js`:
-```javascript
-const POLL_INTERVAL = 15000; // Change to desired milliseconds
-```
-
-**Note**: Must be greater than cache TTL (12 seconds) to be effective.
-
 ### Change Cache Duration
 
 Edit `app/api/stock-ticker/route.js`:
 ```javascript
-const CACHE_TTL = 12; // Change to desired seconds
+const CACHE_TTL = 3600; // Change to desired seconds (default: 3600 = 1 hour)
 ```
 
-**Note**: Must respect Alpha Vantage rate limits (5 calls/min = 12 seconds minimum).
+**Note**: Must respect Alpha Vantage rate limits. With 1-hour cache, maximum 24 calls per day (under 25 calls/day free tier limit).
 
 ## Development
 
@@ -257,8 +248,8 @@ npm start
 
 ### Rate Limit Errors
 
-- Free tier allows 5 calls/min
-- Cache is set to 12 seconds (5 calls/min)
+- Free tier allows 25 calls per day
+- Cache is set to 1 hour, ensuring maximum 24 calls per day
 - If you see rate limit errors, increase cache TTL or upgrade Alpha Vantage plan
 
 ## Compliance Notes

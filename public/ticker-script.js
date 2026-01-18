@@ -18,7 +18,7 @@
 
   // Configuration
   const API_URL = '/app/api/stock-ticker'; // Mount path is /app
-  const POLL_INTERVAL = 60000; // 60 seconds (cache is 5 minutes, so this is reasonable)
+  const POLL_INTERVAL = 300000; // 5 minutes (data cached for 1 hour on backend)
 
   // Get DOM elements
   const container = document.getElementById('stock-ticker-container');

@@ -6,8 +6,7 @@ export default function Home() {
   return (
     <div style={{ padding: '2rem', textAlign: 'center' }}>
       <h1>Stock Ticker API</h1>
-      <p>API endpoint available at: <code>/api/stock-ticker</code></p>
-      <p>This page is not used in Webflow. The API route is what matters.</p>
+      <p>API endpoint available at: <code>/api/stock-ticker</code></p>    
     </div>
   )
 }
