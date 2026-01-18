@@ -8,13 +8,23 @@ const CACHE_KEY = `stock-ticker:${STOCK_SYMBOL.toLowerCase()}`;
 export async function GET(request) {
   try {
     // Check Cloudflare Cache API first (persists across worker instances)
-    const cacheUrl = new URL(request.url);
-    cacheUrl.pathname = `/cache/${CACHE_KEY}`;
-    const cacheRequest = new Request(cacheUrl.toString());
-    const cachedResponse = await caches.default.match(cacheRequest);
+    // Wrap in try-catch in case caches API isn't available in this runtime
+    let cachedData = null;
+    try {
+      const cacheUrl = new URL(request.url);
+      cacheUrl.pathname = `/cache/${CACHE_KEY}`;
+      const cacheRequest = new Request(cacheUrl.toString());
+      const cachedResponse = await caches?.default?.match(cacheRequest);
+      
+      if (cachedResponse) {
+        cachedData = await cachedResponse.json();
+      }
+    } catch (cacheError) {
+      // Cache API might not be available - continue without cache
+      console.warn('Cache API not available:', cacheError);
+    }
     
-    if (cachedResponse) {
-      const cachedData = await cachedResponse.json();
+    if (cachedData) {
       return Response.json(cachedData);
     }
 
@@ -60,10 +70,17 @@ export async function GET(request) {
     if (data['Note']) {
       console.warn('Alpha Vantage Rate Limit:', data['Note']);
       // If we hit rate limit, try to return cached data even if expired
-      const staleResponse = await caches.default.match(cacheRequest);
-      if (staleResponse) {
-        const staleData = await staleResponse.json();
-        return Response.json(staleData);
+      try {
+        const cacheUrl = new URL(request.url);
+        cacheUrl.pathname = `/cache/${CACHE_KEY}`;
+        const cacheRequest = new Request(cacheUrl.toString());
+        const staleResponse = await caches?.default?.match(cacheRequest);
+        if (staleResponse) {
+          const staleData = await staleResponse.json();
+          return Response.json(staleData);
+        }
+      } catch (cacheError) {
+        // Cache not available - continue
       }
       
       return Response.json(
@@ -128,14 +145,24 @@ export async function GET(request) {
     };
 
     // Cache the result using Cloudflare Cache API (persists across worker instances)
-    const cacheResponse = Response.json(result, {
-      headers: {
-        'Cache-Control': `public, max-age=${CACHE_TTL}, s-maxage=${CACHE_TTL}`
+    try {
+      const cacheUrl = new URL(request.url);
+      cacheUrl.pathname = `/cache/${CACHE_KEY}`;
+      const cacheRequest = new Request(cacheUrl.toString());
+      const cacheResponse = Response.json(result, {
+        headers: {
+          'Cache-Control': `public, max-age=${CACHE_TTL}, s-maxage=${CACHE_TTL}`
+        }
+      });
+      
+      // Store in cache for future requests
+      if (caches?.default) {
+        await caches.default.put(cacheRequest, cacheResponse.clone());
       }
-    });
-    
-    // Store in cache for future requests (reuse cacheRequest from line 13)
-    await caches.default.put(cacheRequest, cacheResponse.clone());
+    } catch (cacheError) {
+      // Cache not available - continue without caching
+      console.warn('Unable to cache result:', cacheError);
+    }
 
     return Response.json(result);
 
@@ -144,13 +171,17 @@ export async function GET(request) {
     console.error('Error stack:', error.stack);
     
     // Try to return stale cache on error
-    const cacheUrl = new URL(request.url);
-    cacheUrl.pathname = `/cache/${CACHE_KEY}`;
-    const cacheRequest = new Request(cacheUrl.toString());
-    const staleResponse = await caches.default.match(cacheRequest);
-    if (staleResponse) {
-      const staleData = await staleResponse.json();
-      return Response.json(staleData);
+    try {
+      const cacheUrl = new URL(request.url);
+      cacheUrl.pathname = `/cache/${CACHE_KEY}`;
+      const cacheRequest = new Request(cacheUrl.toString());
+      const staleResponse = await caches?.default?.match(cacheRequest);
+      if (staleResponse) {
+        const staleData = await staleResponse.json();
+        return Response.json(staleData);
+      }
+    } catch (cacheError) {
+      // Cache not available - continue
     }
 
     return Response.json(
