@@ -134,11 +134,8 @@ export async function GET(request) {
       }
     });
     
-    // Store in cache for future requests
-    const cacheUrl = new URL(request.url);
-    cacheUrl.pathname = `/cache/${CACHE_KEY}`;
-    const cacheRequestToStore = new Request(cacheUrl.toString());
-    await caches.default.put(cacheRequestToStore, cacheResponse.clone());
+    // Store in cache for future requests (reuse cacheRequest from line 13)
+    await caches.default.put(cacheRequest, cacheResponse.clone());
 
     return Response.json(result);
 
