@@ -17,7 +17,7 @@
   'use strict';
 
   // Configuration
-  const API_URL = '/app/api/stock-ticker'; // Mount path is /app
+  const API_URL = '/app/stock-ticker'; // Mount path is /app
   const POLL_INTERVAL = 300000; // 5 minutes (data cached for 1 hour on backend)
 
   // Get DOM elements

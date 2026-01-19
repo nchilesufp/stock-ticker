@@ -1,7 +1,7 @@
 // Note: OpenNext Cloudflare uses Node.js runtime (edge runtime not yet supported)
 // Using in-memory cache (won't persist across worker instances, but works)
 
-import cache from '../../../lib/cache.js';
+import cache from '../../lib/cache.js';
 
 const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
 const CACHE_TTL = 3600; // 1 hour - limit to 1 call per hour to Alpha Vantage API
