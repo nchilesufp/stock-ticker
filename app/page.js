@@ -2,7 +2,7 @@
 
 export default function Home() {
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <h1 style={{ marginBottom: '2rem' }}>UFP Apps</h1>
       <div style={{
         display: 'grid',
@@ -10,7 +10,7 @@ export default function Home() {
         gap: '1.5rem'
       }}>
         <a
-          href="/stock-ticker"
+          href="/app/stock-ticker"
           style={{
             display: 'block',
             padding: '2rem',
