@@ -193,11 +193,7 @@ export async function GET(request) {
     return Response.json(
       {
         status: 'error',
-        message: 'Service not available',
-        error: error.message,
-        errorType: error.constructor.name,
-        apiKeyConfigured: !!process.env.ALPHA_VANTAGE_API_KEY,
-        stockSymbol: STOCK_SYMBOL
+        message: 'Service not available'
       },
       { status: 503 }
     );
