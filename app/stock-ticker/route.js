@@ -1,6 +1,7 @@
 // Note: OpenNext Cloudflare uses Node.js runtime (edge runtime not yet supported)
-// Using in-memory cache (won't persist across worker instances, but works)
+// Using Cloudflare KV for persistent cache across edge nodes
 
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import cache from '../../lib/cache.js';
 
 const STOCK_SYMBOL = process.env.STOCK_SYMBOL || 'AAPL'; // Default to AAPL if not set
@@ -9,8 +10,40 @@ const CACHE_KEY = STOCK_SYMBOL.toLowerCase();
 
 export async function GET(request) {
   try {
+    // Get Cloudflare KV binding
+    try {
+      const { env } = getCloudflareContext();
+      if (env.KV) {
+        cache.setKV(env.KV);
+      }
+    } catch (error) {
+      // KV not available (local dev), will fall back to in-memory cache
+      console.log('KV not available, using in-memory cache');
+    }
+
+    // Check if we're currently rate limited
+    if (await cache.isRateLimited()) {
+      console.log('Rate limited - returning stale cache');
+      const staleCache = await cache.getStale(CACHE_KEY);
+      if (staleCache) {
+        return Response.json({
+          ...staleCache,
+          rateLimited: true,
+          message: 'Serving cached data due to rate limit'
+        });
+      }
+      return Response.json(
+        {
+          status: 'error',
+          message: 'Service temporarily unavailable due to rate limit',
+          rateLimit: true
+        },
+        { status: 503 }
+      );
+    }
+
     // Check cache first
-    const cached = cache.get(CACHE_KEY);
+    const cached = await cache.get(CACHE_KEY);
     if (cached) {
       return Response.json(cached);
     }
@@ -57,18 +90,32 @@ export async function GET(request) {
     if (data['Note'] || data['Information']) {
       const message = data['Note'] || data['Information'];
       console.warn('Alpha Vantage Rate Limit:', message);
+
+      // Set rate limit flag - Alpha Vantage free tier resets daily
+      // Set backoff for 24 hours from now
+      const tomorrow = new Date();
+      tomorrow.setUTCHours(24, 0, 0, 0); // Next UTC midnight
+      await cache.setRateLimited(tomorrow.getTime());
+
+      console.log(`Rate limit activated until ${tomorrow.toISOString()}`);
+
       // If we hit rate limit, try to return cached data even if expired
-      const staleCache = cache.get(CACHE_KEY);
+      const staleCache = await cache.getStale(CACHE_KEY);
       if (staleCache) {
-        return Response.json(staleCache);
+        return Response.json({
+          ...staleCache,
+          rateLimited: true,
+          message: 'Serving cached data due to rate limit'
+        });
       }
-      
+
       return Response.json(
         {
           status: 'error',
-          message: 'Service not available',
+          message: 'Service not available - rate limit exceeded',
           rateLimit: true,
-          note: message
+          note: message,
+          retryAfter: tomorrow.toISOString()
         },
         { status: 503 }
       );
@@ -125,18 +172,22 @@ export async function GET(request) {
     };
 
     // Cache the result
-    cache.set(CACHE_KEY, result, CACHE_TTL);
+    await cache.set(CACHE_KEY, result, CACHE_TTL);
 
     return Response.json(result);
 
   } catch (error) {
     console.error('Stock ticker API error:', error);
     console.error('Error stack:', error.stack);
-    
+
     // Try to return stale cache on error
-    const staleCache = cache.get(CACHE_KEY);
+    const staleCache = await cache.getStale(CACHE_KEY);
     if (staleCache) {
-      return Response.json(staleCache);
+      return Response.json({
+        ...staleCache,
+        error: true,
+        message: 'Serving cached data due to API error'
+      });
     }
 
     return Response.json(
