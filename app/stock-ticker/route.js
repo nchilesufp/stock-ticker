@@ -92,12 +92,15 @@ export async function GET(request) {
       console.warn('Alpha Vantage Rate Limit:', message);
 
       // Set rate limit flag - Alpha Vantage free tier resets daily
-      // Set backoff for 24 hours from now
-      const tomorrow = new Date();
-      tomorrow.setUTCHours(24, 0, 0, 0); // Next UTC midnight
-      await cache.setRateLimited(tomorrow.getTime());
-
-      console.log(`Rate limit activated until ${tomorrow.toISOString()}`);
+      // Only set the rate limit if not already set (don't keep pushing it forward)
+      if (!(await cache.isRateLimited())) {
+        // Set backoff for 24 hours from now
+        const rateLimitExpiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
+        await cache.setRateLimited(rateLimitExpiry);
+        console.log(`Rate limit activated until ${new Date(rateLimitExpiry).toISOString()}`);
+      } else {
+        console.log('Rate limit already active, not updating expiration');
+      }
 
       // If we hit rate limit, try to return cached data even if expired
       const staleCache = await cache.getStale(CACHE_KEY);
