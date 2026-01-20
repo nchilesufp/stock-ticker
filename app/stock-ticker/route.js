@@ -42,10 +42,23 @@ export async function GET(request) {
       );
     }
 
-    // Check cache first
+    // Check cache first - use stale-while-revalidate to prevent race conditions
     const cached = await cache.get(CACHE_KEY);
+    const staleCache = await cache.getStale(CACHE_KEY);
+
     if (cached) {
       return Response.json(cached);
+    }
+
+    // If cache expired but stale exists, serve stale and skip API call
+    // This prevents multiple edge nodes from making simultaneous API calls
+    if (staleCache) {
+      console.log('Serving stale cache to prevent race condition API calls');
+      return Response.json({
+        ...staleCache,
+        stale: true,
+        message: 'Serving cached data'
+      });
     }
 
     // Get API key from environment
