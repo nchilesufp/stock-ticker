@@ -125,13 +125,16 @@ export async function GET(request) {
         });
       }
 
+      // Calculate retry time
+      const rateLimitExpiry = Date.now() + (24 * 60 * 60 * 1000);
+
       return Response.json(
         {
           status: 'error',
           message: 'Service not available - rate limit exceeded',
           rateLimit: true,
           note: message,
-          retryAfter: tomorrow.toISOString()
+          retryAfter: new Date(rateLimitExpiry).toISOString()
         },
         { status: 503 }
       );
